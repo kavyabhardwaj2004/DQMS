@@ -16,27 +16,20 @@ Unlike traditional systems, this project utilizes **Real-Time WebSockets** to up
 ## 🏗️ System Architecture
 The system follows a monolithic Full-Stack architecture integrating a Flask backend with a persistent SQLite database and a responsive frontend.
 
-![Architecture Diagram]
-+----------------+       +---------------------+       +--------------------+
-|                | ----> |                     | ----> |                    |
-|    USER SIDE   |       |    BACKEND (Flask)  |       |     ADMIN SIDE     |
-|   (Browser)    |       |                     |       |     (Browser)      |
-|----------------|       |---------------------|       |--------------------|
-| - Get Token UI | --+-->| - Flask Routes      | --+-->| - Controls (Next)  |
-| - View My Turn |   |   | - API Endpoints     |   |   | - View Queue List  |
-| - Wait Time    |   |   | - AI Core           |   |   | - Real-time Display|
-+----------------+   |   | - Database Access   |   |   +--------------------+
-                     |   | - SocketIO Server   |   |
-                     |   +---------+-----------+   |
-                     |             |               |
-                     |             |               | (Real-time updates via WebSocket)
-                     |             v               |
-                     |   +---------------------+   |
-                     |   |   DATABASE (SQLite) |   |
-                     |   |   (queue.db)        |   |
-                     |   |   - Tokens Table    |   |
-                     |   +---------------------+   |
-                     +-----------------------------+
+### 1. Presentation Layer (Frontend)
+User Interface: A mobile-responsive web form (user.html) where clients generate tickets. It keeps a persistent WebSocket connection open to receive "My Turn" alerts.
+Admin Dashboard: A control panel (admin.html) that receives live JSON data streams to render the queue list dynamically without refreshing the page.
+
+### 2. Application Layer (Backend Logic)
+Flask Controller (app.py): Acts as the API Gateway. It intercepts all HTTP requests (/get_token, /next_token) and routes them to specific functions.
+AI/ML Core: A modular logic block that processes the "Reason for Visit" text.
+NLP Component: Scans for keywords (Emergency, Critical) to assign True to the urgency flag.
+Regression Component: Calculates wait time: (Queue_Length * 5) / Active_Counters.
+Real-Time Engine: Uses Flask-SocketIO to broadcast state changes (Broadcasts a generic "Queue Update" event) to all connected clients simultaneously.
+
+### 3. Data Layer (Persistence)
+SQLite Database (queue.db): A lightweight relational database managed via SQLAlchemy.
+Token Entity: Stores ID, Name, Reason, Timestamp, Urgency, and Status (Waiting/Serving/Done).
 
 ---
 
