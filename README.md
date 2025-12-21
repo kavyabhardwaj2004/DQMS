@@ -16,8 +16,27 @@ Unlike traditional systems, this project utilizes **Real-Time WebSockets** to up
 ## 🏗️ System Architecture
 The system follows a monolithic Full-Stack architecture integrating a Flask backend with a persistent SQLite database and a responsive frontend.
 
-![Architecture Diagram](https://github.com/user-attachments/assets/PLACEHOLDER_FOR_YOUR_IMAGE_LINK)
-*(Upload your flow diagram here)*
+![Architecture Diagram]
++----------------+       +---------------------+       +--------------------+
+|                | ----> |                     | ----> |                    |
+|    USER SIDE   |       |    BACKEND (Flask)  |       |     ADMIN SIDE     |
+|   (Browser)    |       |                     |       |     (Browser)      |
+|----------------|       |---------------------|       |--------------------|
+| - Get Token UI | --+-->| - Flask Routes      | --+-->| - Controls (Next)  |
+| - View My Turn |   |   | - API Endpoints     |   |   | - View Queue List  |
+| - Wait Time    |   |   | - AI Core           |   |   | - Real-time Display|
++----------------+   |   | - Database Access   |   |   +--------------------+
+                     |   | - SocketIO Server   |   |
+                     |   +---------+-----------+   |
+                     |             |               |
+                     |             |               | (Real-time updates via WebSocket)
+                     |             v               |
+                     |   +---------------------+   |
+                     |   |   DATABASE (SQLite) |   |
+                     |   |   (queue.db)        |   |
+                     |   |   - Tokens Table    |   |
+                     |   +---------------------+   |
+                     +-----------------------------+
 
 ---
 
