@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DQMS | Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* SIDEBAR (Controls) */
+        .sidebar {
+            width: 300px;
+            background: white;
+            padding: 30px;
+            border-right: 1px solid #e1e4e8;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        h2 { margin-top: 0; font-size: 1.5rem; color: #1a202c; }
+
+        .serving-card {
+            background: #ebf8ff;
+            border: 2px solid #4299e1;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .serving-card h3 { margin: 0; color: #4299e1; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .token-large { font-size: 4rem; margin: 10px 0; color: #2b6cb0; font-weight: 800; }
+        .customer-name { font-size: 1.2rem; font-weight: 600; color: #2d3748; }
+
+        .btn-next {
+            background-color: #3182ce;
+            color: white;
+            padding: 18px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            box-shadow: 0 4px 6px rgba(49, 130, 206, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-next:hover { background-color: #2b6cb0; transform: translateY(-2px); }
+
+        /* MAIN CONTENT (List) */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .count-badge { background: #e2e8f0; padding: 5px 12px; border-radius: 20px; font-weight: bold; color: #4a5568; }
+
+        /* QUEUE LIST STYLING */
+        ul { list-style: none; padding: 0; }
+
+        li {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            border-left: 5px solid transparent;
+            transition: transform 0.2s;
+        }
+
+        /* Dynamic Borders based on type */
+        li.normal { border-left-color: #3182ce; }
+        li.urgent { border-left-color: #e53e3e; background-color: #fff5f5; }
+
+        .info { display: flex; flex-direction: column; }
+        .id-badge { font-weight: 800; color: #2d3748; margin-bottom: 5px; font-size: 1.1rem; }
+        .meta { color: #718096; font-size: 0.9rem; }
+
+        .tag {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .tag-urgent { background: #fed7d7; color: #9b2c2c; }
+        .tag-normal { background: #bee3f8; color: #2c5282; }
+
+    </style>
+</head>
+<body>
+
+    <!-- LEFT SIDE: Controls -->
+    <div class="sidebar">
+        <h2>Admin Console</h2>
+        <div class="serving-card">
+            <h3>Now Serving</h3>
+            <div class="token-large" id="now-serving">--</div>
+            <div class="customer-name" id="serving-name">Waiting...</div>
+        </div>
+        <button class="btn-next" onclick="callNext()">📢 Call Next Person</button>
+        <p style="margin-top:auto; font-size:0.8rem; color:#aaa; text-align:center;">AI Queue Management System v1.0</p>
+    </div>
+
+    <!-- RIGHT SIDE: The List -->
+    <div class="main-content">
+        <div class="header">
+            <h2>Waiting List</h2>
+            <span class="count-badge"><span id="queue-count">0</span> Pending</span>
+        </div>
+
+        <ul id="list-container">
+            <!-- Items injected by JS -->
+        </ul>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function callNext() {
+            fetch('/next_token', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'empty') alert("Queue is empty!");
+            });
+        }
+
+        socket.on('queue_update', function(data) {
+            // Update "Now Serving" Card
+            document.getElementById('now-serving').innerText = "#" + data.current_serving;
+            document.getElementById('queue-count').innerText = data.queue_length;
+
+            // Fetch name of serving person (Optional improvement logic here,
+            // for now, we assume if we had the name in 'data' we would show it.
+            // Since the python update_all_clients sends ID only for serving,
+            // we will stick to ID for simple serving view or modify Python later)
+
+            const list = document.getElementById('list-container');
+            list.innerHTML = "";
+
+            data.queue_list.forEach(token => {
+                let li = document.createElement('li');
+
+                // Decide styles based on urgency
+                let typeClass = token.urgent ? 'urgent' : 'normal';
+                let tagHtml = token.urgent ? '<span class="tag tag-urgent">URGENT</span>' : '<span class="tag tag-normal">NORMAL</span>';
+
+                li.className = typeClass;
+                li.innerHTML = `
+                    <div class="info">
+                        <span class="id-badge">#${token.id} - ${token.name}</span>
+                        <span class="meta">Joined: ${token.join_time}</span>
+                    </div>
+                    ${tagHtml}
+                `;
+                list.appendChild(li);
+            });
+        });
+    </script>
+</body>
+</html>

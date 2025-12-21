@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DQMS | Welcome</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        h1 { color: #333; font-weight: 800; margin-bottom: 5px; }
+        p.subtitle { color: #666; margin-top: 0; margin-bottom: 30px; font-size: 0.9rem; }
+
+        input {
+            width: 90%; /* Fixed width issue */
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus { border-color: #667eea; }
+
+        button {
+            width: 100%; /* Button matches input width */
+            padding: 15px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 12px;
+            background: #667eea;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover { background: #5a6fd1; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+
+        /* TICKET STYLING */
+        #ticket-info { display: none; }
+
+        .token-display {
+            background: #f4f7f6;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px dashed #ccd;
+        }
+
+        .big-number {
+            font-size: 4.5rem;
+            color: #667eea;
+            font-weight: 800;
+            line-height: 1;
+            margin: 10px 0;
+        }
+
+        .status-box {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .status-item span { display: block; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .status-item strong { display: block; font-size: 1.2rem; color: #333; }
+
+        .highlight-green { color: #2ecc71 !important; }
+
+        /* Alert animation */
+        @keyframes flash {
+            0% { background-color: white; }
+            50% { background-color: #e0f7fa; }
+            100% { background-color: white; }
+        }
+        .notify { animation: flash 1s infinite; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="main-card">
+        <!-- FORM STATE -->
+        <div id="form-container">
+            <h1>Welcome</h1>
+            <p class="subtitle">Enter details to join the Smart Queue</p>
+            <input type="text" id="name" placeholder="Full Name" required autocomplete="off">
+            <input type="text" id="reason" placeholder="Reason (e.g., Checkup, Emergency)" required autocomplete="off">
+            <button onclick="getToken()">Join Queue</button>
+        </div>
+
+        <!-- TICKET STATE -->
+        <div id="ticket-info">
+            <h1 style="font-size: 1.5rem;">You are in Line!</h1>
+            <div class="token-display">
+                <span style="color:#aaa; font-weight:600;">TOKEN NUMBER</span>
+                <div class="big-number" id="my-token">--</div>
+                <div id="priority-badge" style="display:none; color: red; font-weight: bold; font-size: 0.9rem;">⚠️ PRIORITY</div>
+            </div>
+
+            <div class="status-box">
+                <div class="status-item">
+                    <span>Now Serving</span>
+                    <strong id="current-serving-global">--</strong>
+                </div>
+                <div class="status-item">
+                    <span>Est. Wait</span>
+                    <strong id="wait-time">-- min</strong>
+                </div>
+            </div>
+            <p style="margin-top:20px; font-size:0.8rem; color:#aaa;">Please wait for your number.</p>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let myTokenId = null;
+
+        function getToken() {
+            const name = document.getElementById('name').value;
+            const reason = document.getElementById('reason').value;
+
+            if(!name || !reason) { alert("Please fill all fields"); return; }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('reason', reason);
+
+            fetch('/get_token', { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                myTokenId = data.id;
+                document.getElementById('form-container').style.display = 'none';
+                document.getElementById('ticket-info').style.display = 'block';
+                document.getElementById('my-token').innerText = "#" + data.id;
+                document.getElementById('wait-time').innerText = data.estimated_wait + " min";
+
+                // Show red warning if backend says it's urgent
+                if (data.estimated_wait === 0) {
+                    document.getElementById('priority-badge').style.display = 'block';
+                    document.getElementById('wait-time').innerText = "NOW";
+                }
+            });
+        }
+
+        socket.on('queue_update', function(data) {
+            document.getElementById('current-serving-global').innerText = "#" + data.current_serving;
+
+            if(myTokenId && data.current_serving == myTokenId) {
+                document.getElementById('main-card').classList.add('notify');
+                document.getElementById('wait-time').innerText = "Serving";
+                alert("🚨 IT IS YOUR TURN!");
+            }
+        });
+    </script>
+</body>
+</html>
