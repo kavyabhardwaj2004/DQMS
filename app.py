@@ -139,22 +139,25 @@ def next_token():
         return jsonify({'status': 'empty'}) # json response if there is no one remaining in the queue
 # REAL-TIME UPDATES public announcement system
 def update_all_clients():
-    # Fetch fresh data from DB
+    # 1. Waiting Counts & List
     queue_count = Token.query.filter_by(status='waiting').count()
+    waiting_list_objs = Token.query.filter_by(status='waiting').order_by(Token.is_urgent.desc(), Token.id).all()
+    waiting_list = [{'id': t.id, 'name': t.name, 'join_time': t.join_time, 'urgent': t.is_urgent} for t in
+                    waiting_list_objs]
+
+    # 2. Currently Serving
     serving_person = Token.query.filter_by(status='serving').first()
 
-    # Get list of waiting people (Limit to top 10 for display)
-    # Retrieves waiting tokens, prioritizing urgent ones and ordering by join time.
-    waiting_list_objs = Token.query.filter_by(status='waiting').order_by(Token.is_urgent.desc(), Token.id).all()
-    # Convert DB objects to simple list - Creates a simplified list of waiting people with their details.
-    waiting_list = []
-    for t in waiting_list_objs:
-        waiting_list.append({'id': t.id, 'name': t.name, 'join_time': t.join_time, 'urgent': t.is_urgent})
+    # 3. Recently Done (New Logic) - Get the last 10 finished people
+    # We send this so their phones know to show the "Thank You" message
+    done_objs = Token.query.filter_by(status='done').order_by(Token.id.desc()).limit(10).all()
+    done_list = [t.id for t in done_objs]
 
     data = {
         'queue_length': queue_count,
         'current_serving': serving_person.id if serving_person else "None",
-        'queue_list': waiting_list
+        'queue_list': waiting_list,
+        'done_list': done_list  # <--- Sending this to the frontend
     }
     socketio.emit('queue_update', data)
     # data is the packet information that is been sent and emit means to broadcast
