@@ -1,13 +1,12 @@
 # 🏥 DQMS: Digital Queue Management System
 
 > **A Full-Stack, Real-Time Queuing Solution powered by AI Logic & WebSockets.**
+> **Note: The application is publicly accessible via the live demo; however, for the best performance and full real-time experience, it is recommended to run the project locally.**
 
 ## 🔴 Live Demo Status:
 👇🏻👇🏻Check out the live demostration of our project on render.....given below is the link to admin and user page 
 **Link** : https://dqms-live.onrender.com/admin
 **Link** : https://dqms-live.onrender.com/
-
-> **Note: The application is publicly accessible via the live demo; however, for the best performance and full real-time experience, it is recommended to run the project locally.**
 
 ## 💡 About The Project
 **DQMS** (Digital Queue Management System) is designed to solve the problem of chaotic physical queues in banks, hospitals, and service centers.
